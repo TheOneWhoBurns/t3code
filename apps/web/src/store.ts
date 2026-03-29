@@ -568,7 +568,9 @@ export function applyOrchestrationEvent(state: AppState, event: OrchestrationEve
 
     case "project.deleted": {
       const projects = state.projects.filter((project) => project.id !== event.payload.projectId);
-      return projects === state.projects ? state : { ...state, projects, threadsHydrated: true };
+      return projects.length === state.projects.length
+        ? state
+        : { ...state, projects, threadsHydrated: true };
     }
 
     case "thread.created": {
@@ -604,7 +606,9 @@ export function applyOrchestrationEvent(state: AppState, event: OrchestrationEve
 
     case "thread.deleted": {
       const threads = state.threads.filter((thread) => thread.id !== event.payload.threadId);
-      return threads === state.threads ? state : { ...state, threads, threadsHydrated: true };
+      return threads.length === state.threads.length
+        ? state
+        : { ...state, threads, threadsHydrated: true };
     }
 
     case "thread.archived": {
