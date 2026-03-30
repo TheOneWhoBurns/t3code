@@ -1,4 +1,4 @@
-import type { ProjectSearchEntriesResult } from "@t3tools/contracts";
+import type { ProjectListDirectoriesResult, ProjectSearchEntriesResult } from "@t3tools/contracts";
 import { queryOptions } from "@tanstack/react-query";
 import { ensureNativeApi } from "~/nativeApi";
 
@@ -6,6 +6,7 @@ export const projectQueryKeys = {
   all: ["projects"] as const,
   searchEntries: (cwd: string | null, query: string, limit: number) =>
     ["projects", "search-entries", cwd, query, limit] as const,
+  listDirectories: (cwd: string | null) => ["projects", "list-directories", cwd] as const,
 };
 
 const DEFAULT_SEARCH_ENTRIES_LIMIT = 80;
@@ -39,5 +40,28 @@ export function projectSearchEntriesQueryOptions(input: {
     enabled: (input.enabled ?? true) && input.cwd !== null && input.query.length > 0,
     staleTime: input.staleTime ?? DEFAULT_SEARCH_ENTRIES_STALE_TIME,
     placeholderData: (previous) => previous ?? EMPTY_SEARCH_ENTRIES_RESULT,
+  });
+}
+
+const EMPTY_LIST_DIRECTORIES_RESULT: ProjectListDirectoriesResult = {
+  directories: [],
+};
+
+export function projectListDirectoriesQueryOptions(input: {
+  cwd: string | null;
+  enabled?: boolean;
+}) {
+  return queryOptions({
+    queryKey: projectQueryKeys.listDirectories(input.cwd),
+    queryFn: async () => {
+      const api = ensureNativeApi();
+      if (!input.cwd) {
+        throw new Error("Directory listing is unavailable.");
+      }
+      return api.projects.listDirectories({ cwd: input.cwd });
+    },
+    enabled: (input.enabled ?? true) && input.cwd !== null,
+    staleTime: 10_000,
+    placeholderData: (previous) => previous ?? EMPTY_LIST_DIRECTORIES_RESULT,
   });
 }
