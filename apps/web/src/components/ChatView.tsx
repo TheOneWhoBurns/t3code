@@ -28,7 +28,6 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebouncedValue } from "@tanstack/react-pacer";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useShallow } from "zustand/react/shallow";
 import { gitBranchesQueryOptions, gitCreateWorktreeMutationOptions } from "~/lib/gitReactQuery";
 import { projectSearchEntriesQueryOptions } from "~/lib/projectReactQuery";
 import { serverConfigQueryOptions, serverQueryKeys } from "~/lib/serverReactQuery";
@@ -591,9 +590,8 @@ export default function ChatView({ threadId }: ChatViewProps) {
   );
 
   const fallbackDraftProject = useProjectById(draftThread?.projectId);
-  const threadPlanCatalog = useStore(
-    useShallow((store) => store.threads.map(toThreadPlanCatalogEntry)),
-  );
+  const threads = useStore((store) => store.threads);
+  const threadPlanCatalog = useMemo(() => threads.map(toThreadPlanCatalogEntry), [threads]);
   const localDraftError = serverThread ? null : (localDraftErrorsByThreadId[threadId] ?? null);
   const localDraftThread = useMemo(
     () =>

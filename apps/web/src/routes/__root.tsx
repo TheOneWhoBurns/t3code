@@ -250,8 +250,10 @@ function EventRouter() {
         return;
       }
 
+      const sequenceBefore = recovery.getState().latestSequence;
+
       try {
-        const events = await api.orchestration.replayEvents(recovery.getState().latestSequence);
+        const events = await api.orchestration.replayEvents(sequenceBefore);
         if (!disposed) {
           applyEventBatch(events);
         }
@@ -261,7 +263,17 @@ function EventRouter() {
         return;
       }
 
-      if (!disposed && recovery.completeReplayRecovery()) {
+      if (disposed) {
+        return;
+      }
+
+      if (recovery.getState().latestSequence === sequenceBefore) {
+        recovery.failReplayRecovery();
+        void fallbackToSnapshotRecovery();
+        return;
+      }
+
+      if (recovery.completeReplayRecovery()) {
         void recoverFromSequenceGap();
       }
     };
