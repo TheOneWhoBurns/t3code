@@ -341,20 +341,20 @@ function useLocalDispatchState(input: {
 }) {
   const [localDispatch, setLocalDispatch] = useState<LocalDispatchSnapshot | null>(null);
 
-  const beginLocalDispatch = useCallback(
-    (options?: { preparingWorktree?: boolean }) => {
-      const preparingWorktree = Boolean(options?.preparingWorktree);
-      setLocalDispatch((current) => {
-        if (current) {
-          return current.preparingWorktree === preparingWorktree
-            ? current
-            : { ...current, preparingWorktree };
-        }
-        return createLocalDispatchSnapshot(input.activeThread, options);
-      });
-    },
-    [input.activeThread],
-  );
+  const activeThreadRef = useRef(input.activeThread);
+  activeThreadRef.current = input.activeThread;
+
+  const beginLocalDispatch = useCallback((options?: { preparingWorktree?: boolean }) => {
+    const preparingWorktree = Boolean(options?.preparingWorktree);
+    setLocalDispatch((current) => {
+      if (current) {
+        return current.preparingWorktree === preparingWorktree
+          ? current
+          : { ...current, preparingWorktree };
+      }
+      return createLocalDispatchSnapshot(activeThreadRef.current, options);
+    });
+  }, []);
 
   const resetLocalDispatch = useCallback(() => {
     setLocalDispatch(null);
