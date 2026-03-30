@@ -876,24 +876,22 @@ export function applyOrchestrationEvent(state: AppState, event: OrchestrationEve
               (right.checkpointTurnCount ?? Number.MAX_SAFE_INTEGER),
           )
           .slice(-MAX_THREAD_CHECKPOINTS);
+        const latestTurn =
+          thread.latestTurn === null || thread.latestTurn.turnId === event.payload.turnId
+            ? buildLatestTurn({
+                previous: thread.latestTurn,
+                turnId: event.payload.turnId,
+                state: checkpointStatusToLatestTurnState(event.payload.status),
+                requestedAt: thread.latestTurn?.requestedAt ?? event.payload.completedAt,
+                startedAt: thread.latestTurn?.startedAt ?? event.payload.completedAt,
+                completedAt: event.payload.completedAt,
+                assistantMessageId: event.payload.assistantMessageId,
+              })
+            : thread.latestTurn;
         return {
           ...thread,
           turnDiffSummaries,
-          latestTurn: buildLatestTurn({
-            previous: thread.latestTurn,
-            turnId: event.payload.turnId,
-            state: checkpointStatusToLatestTurnState(event.payload.status),
-            requestedAt:
-              thread.latestTurn?.turnId === event.payload.turnId
-                ? thread.latestTurn.requestedAt
-                : event.payload.completedAt,
-            startedAt:
-              thread.latestTurn?.turnId === event.payload.turnId
-                ? (thread.latestTurn.startedAt ?? event.payload.completedAt)
-                : event.payload.completedAt,
-            completedAt: event.payload.completedAt,
-            assistantMessageId: event.payload.assistantMessageId,
-          }),
+          latestTurn,
           updatedAt: event.occurredAt,
         };
       });
