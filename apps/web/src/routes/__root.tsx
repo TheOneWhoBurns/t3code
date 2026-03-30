@@ -156,11 +156,8 @@ function EventRouter() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
   const handledBootstrapThreadIdRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    pathnameRef.current = pathname;
-  }, [pathname]);
 
   useEffect(() => {
     const api = readNativeApi();
