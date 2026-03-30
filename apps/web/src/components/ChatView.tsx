@@ -84,52 +84,6 @@ import {
   type TurnDiffSummary,
 } from "../types";
 import { LRUCache } from "../lib/lruCache";
-
-type ThreadPlanCatalogEntry = Pick<Thread, "id" | "proposedPlans">;
-
-const MAX_THREAD_PLAN_CATALOG_CACHE_ENTRIES = 500;
-const MAX_THREAD_PLAN_CATALOG_CACHE_MEMORY_BYTES = 512 * 1024;
-const threadPlanCatalogCache = new LRUCache<{
-  proposedPlans: Thread["proposedPlans"];
-  entry: ThreadPlanCatalogEntry;
-}>(MAX_THREAD_PLAN_CATALOG_CACHE_ENTRIES, MAX_THREAD_PLAN_CATALOG_CACHE_MEMORY_BYTES);
-
-function estimateThreadPlanCatalogEntrySize(thread: Thread): number {
-  return Math.max(
-    64,
-    thread.id.length +
-      thread.proposedPlans.reduce(
-        (total, plan) =>
-          total +
-          plan.id.length +
-          plan.planMarkdown.length +
-          plan.updatedAt.length +
-          (plan.turnId?.length ?? 0),
-        0,
-      ),
-  );
-}
-
-function toThreadPlanCatalogEntry(thread: Thread): ThreadPlanCatalogEntry {
-  const cached = threadPlanCatalogCache.get(thread.id);
-  if (cached && cached.proposedPlans === thread.proposedPlans) {
-    return cached.entry;
-  }
-
-  const entry: ThreadPlanCatalogEntry = {
-    id: thread.id,
-    proposedPlans: thread.proposedPlans,
-  };
-  threadPlanCatalogCache.set(
-    thread.id,
-    {
-      proposedPlans: thread.proposedPlans,
-      entry,
-    },
-    estimateThreadPlanCatalogEntrySize(thread),
-  );
-  return entry;
-}
 import { basenameOfPath } from "../vscode-icons";
 import { useTheme } from "../hooks/useTheme";
 import { useTurnDiffSummaries } from "../hooks/useTurnDiffSummaries";
@@ -234,6 +188,52 @@ import {
   waitForStartedServerThread,
 } from "./ChatView.logic";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
+
+type ThreadPlanCatalogEntry = Pick<Thread, "id" | "proposedPlans">;
+
+const MAX_THREAD_PLAN_CATALOG_CACHE_ENTRIES = 500;
+const MAX_THREAD_PLAN_CATALOG_CACHE_MEMORY_BYTES = 512 * 1024;
+const threadPlanCatalogCache = new LRUCache<{
+  proposedPlans: Thread["proposedPlans"];
+  entry: ThreadPlanCatalogEntry;
+}>(MAX_THREAD_PLAN_CATALOG_CACHE_ENTRIES, MAX_THREAD_PLAN_CATALOG_CACHE_MEMORY_BYTES);
+
+function estimateThreadPlanCatalogEntrySize(thread: Thread): number {
+  return Math.max(
+    64,
+    thread.id.length +
+      thread.proposedPlans.reduce(
+        (total, plan) =>
+          total +
+          plan.id.length +
+          plan.planMarkdown.length +
+          plan.updatedAt.length +
+          (plan.turnId?.length ?? 0),
+        0,
+      ),
+  );
+}
+
+function toThreadPlanCatalogEntry(thread: Thread): ThreadPlanCatalogEntry {
+  const cached = threadPlanCatalogCache.get(thread.id);
+  if (cached && cached.proposedPlans === thread.proposedPlans) {
+    return cached.entry;
+  }
+
+  const entry: ThreadPlanCatalogEntry = {
+    id: thread.id,
+    proposedPlans: thread.proposedPlans,
+  };
+  threadPlanCatalogCache.set(
+    thread.id,
+    {
+      proposedPlans: thread.proposedPlans,
+      entry,
+    },
+    estimateThreadPlanCatalogEntrySize(thread),
+  );
+  return entry;
+}
 
 const ATTACHMENT_PREVIEW_HANDOFF_TTL_MS = 5000;
 const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES / (1024 * 1024))}MB`;
