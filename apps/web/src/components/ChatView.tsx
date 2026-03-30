@@ -494,6 +494,14 @@ export default function ChatView({ threadId }: ChatViewProps) {
   const threadPlanCatalog = useStore(
     useShallow((store) => store.threads.map(toThreadPlanCatalogEntry)),
   );
+  useEffect(() => {
+    const activeIds = new Set(threadPlanCatalog.map((t) => t.id));
+    for (const id of threadPlanCatalogCache.keys()) {
+      if (!activeIds.has(id)) {
+        threadPlanCatalogCache.delete(id);
+      }
+    }
+  }, [threadPlanCatalog]);
   const localDraftError = serverThread ? null : (localDraftErrorsByThreadId[threadId] ?? null);
   const localDraftThread = useMemo(
     () =>
@@ -3158,7 +3166,9 @@ export default function ChatView({ threadId }: ChatViewProps) {
           createdAt,
         });
       })
-      .then(() => {
+      .then(() => api.orchestration.getSnapshot())
+      .then((snapshot) => {
+        useStore.getState().syncServerReadModel(snapshot);
         // Signal that the plan sidebar should open on the new thread.
         planSidebarOpenOnNextThreadRef.current = true;
         return navigate({
@@ -3172,6 +3182,12 @@ export default function ChatView({ threadId }: ChatViewProps) {
             type: "thread.delete",
             commandId: newCommandId(),
             threadId: nextThreadId,
+          })
+          .catch(() => undefined);
+        await api.orchestration
+          .getSnapshot()
+          .then((snapshot) => {
+            useStore.getState().syncServerReadModel(snapshot);
           })
           .catch(() => undefined);
         toastManager.add({
