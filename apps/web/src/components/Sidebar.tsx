@@ -88,6 +88,13 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Menu, MenuGroup, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "./ui/menu";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
+import { projectListDirectoriesQueryOptions } from "~/lib/projectReactQuery";
+import {
+  buildPrefill,
+  filterDirSuggestions,
+  joinDirPath,
+  parsePath,
+} from "./path-autocomplete.logic";
 import {
   SidebarContent,
   SidebarFooter,
@@ -418,6 +425,28 @@ export default function Sidebar() {
   const platform = navigator.platform;
   const shouldBrowseForProjectImmediately = isElectron && !isLinuxDesktop;
   const shouldShowProjectPathEntry = addingProject && !shouldBrowseForProjectImmediately;
+
+  // Directory autocomplete for the add-project input
+  const { data: serverCwd } = useQuery({
+    ...serverConfigQueryOptions(),
+    select: (config) => config.cwd,
+  });
+  const { cwd: pathSearchCwd, query: pathQuery } = useMemo(() => parsePath(newCwd), [newCwd]);
+  const { data: dirListResult } = useQuery(
+    projectListDirectoriesQueryOptions({
+      cwd: pathSearchCwd,
+      enabled: shouldShowProjectPathEntry && !!pathSearchCwd,
+    }),
+  );
+  const dirSuggestions = useMemo(
+    () => filterDirSuggestions(dirListResult?.directories ?? [], pathQuery),
+    [dirListResult?.directories, pathQuery],
+  );
+  const [highlightedIdx, setHighlightedIdx] = useState(-1);
+  useEffect(() => {
+    setHighlightedIdx(-1);
+  }, [dirSuggestions]);
+
   const projectCwdById = useMemo(
     () => new Map(projects.map((project) => [project.id, project.cwd] as const)),
     [projects],
@@ -634,7 +663,12 @@ export default function Sidebar() {
       void handlePickFolder();
       return;
     }
-    setAddingProject((prev) => !prev);
+    setAddingProject((prev) => {
+      if (!prev && serverCwd) {
+        setNewCwd(buildPrefill(serverCwd));
+      }
+      return !prev;
+    });
   };
 
   const cancelRename = useCallback(() => {
@@ -1956,6 +1990,7 @@ export default function Sidebar() {
                           ? "border-red-500/70 focus:border-red-500"
                           : "border-border focus:border-ring"
                       }`}
+                      autoComplete="off"
                       placeholder="/path/to/project"
                       value={newCwd}
                       onChange={(event) => {
@@ -1963,10 +1998,34 @@ export default function Sidebar() {
                         setAddProjectError(null);
                       }}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter") handleAddProject();
-                        if (event.key === "Escape") {
-                          setAddingProject(false);
-                          setAddProjectError(null);
+                        if (event.key === "Tab" && dirSuggestions.length > 0) {
+                          event.preventDefault();
+                          if (dirSuggestions.length === 1 && pathSearchCwd) {
+                            setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[0]!));
+                            setAddProjectError(null);
+                          }
+                        } else if (event.key === "ArrowDown" && dirSuggestions.length > 0) {
+                          event.preventDefault();
+                          setHighlightedIdx((i) => (i < dirSuggestions.length - 1 ? i + 1 : 0));
+                        } else if (event.key === "ArrowUp" && dirSuggestions.length > 0) {
+                          event.preventDefault();
+                          setHighlightedIdx((i) => (i > 0 ? i - 1 : dirSuggestions.length - 1));
+                        } else if (event.key === "Enter") {
+                          if (highlightedIdx >= 0 && pathSearchCwd) {
+                            event.preventDefault();
+                            setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[highlightedIdx]!));
+                            setAddProjectError(null);
+                            setHighlightedIdx(-1);
+                          } else {
+                            handleAddProject();
+                          }
+                        } else if (event.key === "Escape") {
+                          if (highlightedIdx >= 0) {
+                            setHighlightedIdx(-1);
+                          } else {
+                            setAddingProject(false);
+                            setAddProjectError(null);
+                          }
                         }
                       }}
                       autoFocus
@@ -1980,6 +2039,32 @@ export default function Sidebar() {
                       {isAddingProject ? "Adding..." : "Add"}
                     </button>
                   </div>
+                  {dirSuggestions.length > 0 && pathSearchCwd && (
+                    <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-border bg-popover py-1 text-xs shadow-md">
+                      {dirSuggestions.map((name, idx) => (
+                        <button
+                          key={name}
+                          type="button"
+                          className={`flex w-full items-center gap-1.5 px-2 py-1 text-left font-mono text-foreground/80 ${
+                            idx === highlightedIdx
+                              ? "bg-accent text-foreground"
+                              : "hover:bg-accent hover:text-foreground"
+                          }`}
+                          onMouseEnter={() => setHighlightedIdx(idx)}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setNewCwd(joinDirPath(pathSearchCwd, name));
+                            setAddProjectError(null);
+                            setHighlightedIdx(-1);
+                            addProjectInputRef.current?.focus();
+                          }}
+                        >
+                          <FolderIcon className="size-3 shrink-0 opacity-60" />
+                          <span className="truncate">{name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {addProjectError && (
                     <p className="mt-1 px-0.5 text-[11px] leading-tight text-red-400">
                       {addProjectError}
