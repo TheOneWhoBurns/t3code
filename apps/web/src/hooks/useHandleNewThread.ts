@@ -7,7 +7,7 @@ import {
   type DraftThreadState,
   useComposerDraftStore,
 } from "../composerDraftStore";
-import { newThreadId } from "../lib/utils";
+import { newThreadId, orderByPriority } from "../lib/utils";
 import { selectThreadById, useStore } from "../store";
 import { useUiStateStore } from "../uiStateStore";
 
@@ -23,15 +23,10 @@ export function useHandleNewThread() {
   const activeDraftThread = useComposerDraftStore((store) =>
     routeThreadId ? (store.draftThreadsByThreadId[routeThreadId] ?? null) : null,
   );
-  const orderedProjects = useMemo(() => {
-    if (projectOrder.length === 0) {
-      return projectIds;
-    }
-    const projectIdsSet = new Set(projectIds);
-    const ordered = projectOrder.filter((projectId) => projectIdsSet.has(projectId));
-    const remaining = projectIds.filter((projectId) => !projectOrder.includes(projectId));
-    return [...ordered, ...remaining];
-  }, [projectIds, projectOrder]);
+  const orderedProjects = useMemo(
+    () => orderByPriority(projectIds, projectOrder, (id) => id),
+    [projectIds, projectOrder],
+  );
 
   const handleNewThread = useCallback(
     (

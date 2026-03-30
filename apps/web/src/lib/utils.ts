@@ -34,3 +34,23 @@ export const newProjectId = (): ProjectId => ProjectId.makeUnsafe(randomUUID());
 export const newThreadId = (): ThreadId => ThreadId.makeUnsafe(randomUUID());
 
 export const newMessageId = (): MessageId => MessageId.makeUnsafe(randomUUID());
+
+/**
+ * Reorder `items` so that those whose key appears in `orderedKeys` come first
+ * (in `orderedKeys` order), followed by the remaining items in their original order.
+ */
+export function orderByPriority<T>(
+  items: readonly T[],
+  orderedKeys: readonly string[],
+  getKey: (item: T) => string,
+): T[] {
+  if (orderedKeys.length === 0) return items.slice();
+  const itemsByKey = new Map(items.map((item) => [getKey(item), item] as const));
+  const ordered = orderedKeys.flatMap((key) => {
+    const item = itemsByKey.get(key);
+    return item ? [item] : [];
+  });
+  const orderedKeySet = new Set(orderedKeys);
+  const remaining = items.filter((item) => !orderedKeySet.has(getKey(item)));
+  return [...ordered, ...remaining];
+}

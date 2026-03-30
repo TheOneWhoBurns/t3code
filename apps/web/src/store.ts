@@ -852,15 +852,39 @@ export function applyOrchestrationEvents(
   return events.reduce((nextState, event) => applyOrchestrationEvent(nextState, event), state);
 }
 
-export const selectProjectById =
-  (projectId: Project["id"] | null | undefined) =>
-  (state: AppState): Project | undefined =>
-    projectId ? state.projects.find((project) => project.id === projectId) : undefined;
+const _projectSelectorCache = new Map<
+  string | null | undefined,
+  (state: AppState) => Project | undefined
+>();
+export function selectProjectById(
+  projectId: Project["id"] | null | undefined,
+): (state: AppState) => Project | undefined {
+  const key = projectId ?? null;
+  let selector = _projectSelectorCache.get(key);
+  if (!selector) {
+    selector = (state: AppState) =>
+      projectId ? state.projects.find((project) => project.id === projectId) : undefined;
+    _projectSelectorCache.set(key, selector);
+  }
+  return selector;
+}
 
-export const selectThreadById =
-  (threadId: ThreadId | null | undefined) =>
-  (state: AppState): Thread | undefined =>
-    threadId ? state.threads.find((thread) => thread.id === threadId) : undefined;
+const _threadSelectorCache = new Map<
+  string | null | undefined,
+  (state: AppState) => Thread | undefined
+>();
+export function selectThreadById(
+  threadId: ThreadId | null | undefined,
+): (state: AppState) => Thread | undefined {
+  const key = threadId ?? null;
+  let selector = _threadSelectorCache.get(key);
+  if (!selector) {
+    selector = (state: AppState) =>
+      threadId ? state.threads.find((thread) => thread.id === threadId) : undefined;
+    _threadSelectorCache.set(key, selector);
+  }
+  return selector;
+}
 
 export function setError(state: AppState, threadId: ThreadId, error: string | null): AppState {
   const threads = updateThread(state.threads, threadId, (t) => {

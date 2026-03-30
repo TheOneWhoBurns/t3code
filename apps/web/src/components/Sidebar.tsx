@@ -54,7 +54,13 @@ import {
 import { isElectron } from "../env";
 import { APP_STAGE_LABEL, APP_VERSION } from "../branding";
 import { isTerminalFocused } from "../lib/terminalFocus";
-import { isLinuxPlatform, isMacPlatform, newCommandId, newProjectId } from "../lib/utils";
+import {
+  isLinuxPlatform,
+  isMacPlatform,
+  newCommandId,
+  newProjectId,
+  orderByPriority,
+} from "../lib/utils";
 import { useStore } from "../store";
 import { useUiStateStore } from "../uiStateStore";
 import {
@@ -500,18 +506,10 @@ export default function Sidebar() {
   const platform = navigator.platform;
   const shouldBrowseForProjectImmediately = isElectron && !isLinuxDesktop;
   const shouldShowProjectPathEntry = addingProject && !shouldBrowseForProjectImmediately;
-  const orderedProjects = useMemo(() => {
-    if (projectOrder.length === 0) {
-      return projects;
-    }
-    const projectsById = new Map(projects.map((project) => [project.id, project] as const));
-    const ordered = projectOrder.flatMap((projectId) => {
-      const project = projectsById.get(projectId);
-      return project ? [project] : [];
-    });
-    const remaining = projects.filter((project) => !projectOrder.includes(project.id));
-    return [...ordered, ...remaining];
-  }, [projectOrder, projects]);
+  const orderedProjects = useMemo(
+    () => orderByPriority(projects, projectOrder, (p) => p.id),
+    [projectOrder, projects],
+  );
   const sidebarProjects = useMemo<SidebarProjectSnapshot[]>(
     () =>
       orderedProjects.map((project) => ({
