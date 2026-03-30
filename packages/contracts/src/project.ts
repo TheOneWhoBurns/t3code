@@ -37,3 +37,13 @@ export const ProjectWriteFileResult = Schema.Struct({
   relativePath: TrimmedNonEmptyString,
 });
 export type ProjectWriteFileResult = typeof ProjectWriteFileResult.Type;
+
+export const ProjectListDirectoriesInput = Schema.Struct({
+  cwd: TrimmedNonEmptyString,
+});
+export type ProjectListDirectoriesInput = typeof ProjectListDirectoriesInput.Type;
+
+export const ProjectListDirectoriesResult = Schema.Struct({
+  directories: Schema.Array(Schema.String),
+});
+export type ProjectListDirectoriesResult = typeof ProjectListDirectoriesResult.Type;

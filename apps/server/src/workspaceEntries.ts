@@ -563,3 +563,18 @@ export async function searchWorkspaceEntries(
     truncated: index.truncated || matchedEntryCount > limit,
   };
 }
+
+export async function listDirectories(cwd: string): Promise<{ directories: string[] }> {
+  let entries: Dirent[];
+  try {
+    entries = await fs.readdir(cwd, { withFileTypes: true });
+  } catch {
+    return { directories: [] };
+  }
+  return {
+    directories: entries
+      .filter((e) => e.isDirectory() && !e.name.startsWith("."))
+      .map((e) => e.name)
+      .sort(),
+  };
+}
