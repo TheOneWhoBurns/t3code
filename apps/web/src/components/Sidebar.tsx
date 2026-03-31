@@ -442,9 +442,11 @@ export default function Sidebar() {
     () => filterDirSuggestions(dirListResult?.directories ?? [], pathQuery),
     [dirListResult?.directories, pathQuery],
   );
-  const [highlightedIdx, setHighlightedIdx] = useState(-1);
+  const [showDirDropdown, setShowDirDropdown] = useState(false);
+  const [highlightedIdx, setHighlightedIdx] = useState(0);
   useEffect(() => {
-    setHighlightedIdx(-1);
+    setHighlightedIdx(0);
+    setShowDirDropdown(false);
   }, [dirSuggestions]);
 
   const projectCwdById = useMemo(
@@ -1998,33 +2000,32 @@ export default function Sidebar() {
                         setAddProjectError(null);
                       }}
                       onKeyDown={(event) => {
-                        if (event.key === "Tab" && dirSuggestions.length > 0) {
+                        if (event.key === "Tab" && dirSuggestions.length > 0 && pathSearchCwd) {
                           event.preventDefault();
-                          if (dirSuggestions.length === 1 && pathSearchCwd) {
+                          if (dirSuggestions.length === 1) {
                             setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[0]!));
                             setAddProjectError(null);
+                          } else if (showDirDropdown) {
+                            setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[highlightedIdx]!));
+                            setAddProjectError(null);
+                            setShowDirDropdown(false);
+                          } else {
+                            setShowDirDropdown(true);
                           }
-                        } else if (event.key === "ArrowDown" && dirSuggestions.length > 0) {
+                        } else if (event.key === "ArrowDown" && showDirDropdown) {
                           event.preventDefault();
                           setHighlightedIdx((i) => (i < dirSuggestions.length - 1 ? i + 1 : 0));
-                        } else if (event.key === "ArrowUp" && dirSuggestions.length > 0) {
+                        } else if (event.key === "ArrowUp" && showDirDropdown) {
                           event.preventDefault();
                           setHighlightedIdx((i) => (i > 0 ? i - 1 : dirSuggestions.length - 1));
                         } else if (event.key === "Enter") {
-                          if (highlightedIdx >= 0 && pathSearchCwd) {
+                          if (showDirDropdown && pathSearchCwd) {
                             event.preventDefault();
                             setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[highlightedIdx]!));
                             setAddProjectError(null);
-                            setHighlightedIdx(-1);
+                            setShowDirDropdown(false);
                           } else {
                             handleAddProject();
-                          }
-                        } else if (event.key === "Escape") {
-                          if (highlightedIdx >= 0) {
-                            setHighlightedIdx(-1);
-                          } else {
-                            setAddingProject(false);
-                            setAddProjectError(null);
                           }
                         }
                       }}
@@ -2039,8 +2040,8 @@ export default function Sidebar() {
                       {isAddingProject ? "Adding..." : "Add"}
                     </button>
                   </div>
-                  {dirSuggestions.length > 0 && pathSearchCwd && (
-                    <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-border bg-popover py-1 text-xs shadow-md">
+                  {showDirDropdown && dirSuggestions.length > 0 && pathSearchCwd && (
+                    <div className="mt-1 overflow-y-auto rounded-md border border-border bg-popover py-1 text-xs shadow-md">
                       {dirSuggestions.map((name, idx) => (
                         <button
                           key={name}
@@ -2055,7 +2056,7 @@ export default function Sidebar() {
                           onClick={() => {
                             setNewCwd(joinDirPath(pathSearchCwd, name));
                             setAddProjectError(null);
-                            setHighlightedIdx(-1);
+                            setShowDirDropdown(false);
                             addProjectInputRef.current?.focus();
                           }}
                         >
