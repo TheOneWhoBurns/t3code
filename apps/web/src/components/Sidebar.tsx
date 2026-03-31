@@ -444,11 +444,11 @@ export default function Sidebar() {
   );
   const [showDirDropdown, setShowDirDropdown] = useState(false);
   const [highlightedIdx, setHighlightedIdx] = useState(0);
-  // Close dropdown and reset highlight when suggestions change (user typed)
+  // Typing resets the dropdown so the user starts from a clean slate
   useEffect(() => {
     setShowDirDropdown(false);
     setHighlightedIdx(0);
-  }, [dirSuggestions]);
+  }, [pathSearchCwd, pathQuery]);
 
   const projectCwdById = useMemo(
     () => new Map(projects.map((project) => [project.id, project.cwd] as const)),
@@ -640,6 +640,13 @@ export default function Sidebar() {
     void addProjectFromPath(newCwd);
   };
 
+  const acceptDirSuggestion = (name: string) => {
+    if (!pathSearchCwd) return;
+    setNewCwd(joinDirPath(pathSearchCwd, name));
+    setAddProjectError(null);
+    setShowDirDropdown(false);
+  };
+
   const canAddProject = newCwd.trim().length > 0 && !isAddingProject;
 
   const handlePickFolder = async () => {
@@ -666,12 +673,10 @@ export default function Sidebar() {
       void handlePickFolder();
       return;
     }
-    setAddingProject((prev) => {
-      if (!prev && serverCwd) {
-        setNewCwd(buildPrefill(serverCwd));
-      }
-      return !prev;
-    });
+    if (!addingProject && serverCwd) {
+      setNewCwd(buildPrefill(serverCwd));
+    }
+    setAddingProject((prev) => !prev);
   };
 
   const cancelRename = useCallback(() => {
@@ -2001,15 +2006,13 @@ export default function Sidebar() {
                         setAddProjectError(null);
                       }}
                       onKeyDown={(event) => {
-                        if (event.key === "Tab" && dirSuggestions.length > 0 && pathSearchCwd) {
+                        if (event.key === "Tab" && dirSuggestions.length > 0) {
                           event.preventDefault();
                           if (dirSuggestions.length === 1) {
-                            setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[0]!));
-                            setAddProjectError(null);
+                            acceptDirSuggestion(dirSuggestions[0]!);
                           } else if (showDirDropdown) {
-                            setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[highlightedIdx]!));
-                            setAddProjectError(null);
-                            setShowDirDropdown(false);
+                            const idx = Math.min(highlightedIdx, dirSuggestions.length - 1);
+                            acceptDirSuggestion(dirSuggestions[idx]!);
                           } else {
                             setHighlightedIdx(0);
                             setShowDirDropdown(true);
@@ -2021,11 +2024,10 @@ export default function Sidebar() {
                           event.preventDefault();
                           setHighlightedIdx((i) => (i > 0 ? i - 1 : dirSuggestions.length - 1));
                         } else if (event.key === "Enter") {
-                          if (showDirDropdown && pathSearchCwd) {
+                          if (showDirDropdown) {
                             event.preventDefault();
-                            setNewCwd(joinDirPath(pathSearchCwd, dirSuggestions[highlightedIdx]!));
-                            setAddProjectError(null);
-                            setShowDirDropdown(false);
+                            const idx = Math.min(highlightedIdx, dirSuggestions.length - 1);
+                            acceptDirSuggestion(dirSuggestions[idx]!);
                           } else {
                             handleAddProject();
                           }
@@ -2056,9 +2058,7 @@ export default function Sidebar() {
                           onMouseEnter={() => setHighlightedIdx(idx)}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
-                            setNewCwd(joinDirPath(pathSearchCwd, name));
-                            setAddProjectError(null);
-                            setShowDirDropdown(false);
+                            acceptDirSuggestion(name);
                             addProjectInputRef.current?.focus();
                           }}
                         >
