@@ -444,9 +444,10 @@ export default function Sidebar() {
   );
   const [showDirDropdown, setShowDirDropdown] = useState(false);
   const [highlightedIdx, setHighlightedIdx] = useState(0);
+  // Close dropdown and reset highlight when suggestions change (user typed)
   useEffect(() => {
-    setHighlightedIdx(0);
     setShowDirDropdown(false);
+    setHighlightedIdx(0);
   }, [dirSuggestions]);
 
   const projectCwdById = useMemo(
@@ -2010,6 +2011,7 @@ export default function Sidebar() {
                             setAddProjectError(null);
                             setShowDirDropdown(false);
                           } else {
+                            setHighlightedIdx(0);
                             setShowDirDropdown(true);
                           }
                         } else if (event.key === "ArrowDown" && showDirDropdown) {
